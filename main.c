@@ -21,6 +21,17 @@ typedef int (*MemberFn)(int, list_node_t*);
 typedef int (*InsertFn)(int, list_node_t**);
 typedef int (*DeleteFn)(int, list_node_t**);
 
+typedef struct {
+    list_node_t** head_pp;
+    int operations_per_thread;
+    double mMember;
+    double mInsert;
+    double mDelete;
+    MemberFn member_fn;
+    InsertFn insert_fn;
+    DeleteFn delete_fn;
+} thread_params_t;
+
 // Function to get user inputs
 void get_user_inputs() {
     printf("Enter the number of initial values (n): ");
@@ -99,26 +110,59 @@ void perform_random_operations(list_node_t** head_pp, int m, double mMember, dou
     }
 }
 
+void* thread_work(void* arg) {
+    thread_params_t* params = (thread_params_t*) arg;
+    perform_random_operations(params->head_pp, params->operations_per_thread, params->mMember, params->mInsert, params->mDelete, params->member_fn, params->insert_fn, params->delete_fn);
+    pthread_exit(NULL);
+}
+
 // General testing function
 void test_linked_list(const char* list_name, list_node_t** head_pp, MemberFn member_fn, InsertFn insert_fn, DeleteFn delete_fn) {
     // Populate the list
     populate_list(head_pp, n, insert_fn);
-    printf("List Polulated!\n");
-    
+    printf("List Populated!\n");
+
+    // Divide the operations among the threads
+    int operations_per_thread = m / thread_count;
+    int remaining_operations = m % thread_count; // Remaining operations that will be performed by one of the threads
+
     // Start timer
     clock_t start = clock();
-    
-    // Perform operations
-    perform_random_operations(head_pp, m, mMember, mInsert, mDelete, member_fn, insert_fn, delete_fn);
-    printf("Executed Operations!\n");
-    
+
+    // Create threads
+    pthread_t* thread_handles = malloc(thread_count * sizeof(pthread_t));
+    thread_params_t* thread_params = malloc(thread_count * sizeof(thread_params_t));
+
+    for (int i = 0; i < thread_count; i++) {
+        thread_params[i].head_pp = head_pp;
+        thread_params[i].operations_per_thread = operations_per_thread + (i == 0 ? remaining_operations : 0); // Distribute remaining operations to one thread
+        thread_params[i].mMember = mMember;
+        thread_params[i].mInsert = mInsert;
+        thread_params[i].mDelete = mDelete;
+        thread_params[i].member_fn = member_fn;
+        thread_params[i].insert_fn = insert_fn;
+        thread_params[i].delete_fn = delete_fn;
+
+        pthread_create(&thread_handles[i], NULL, thread_work, (void*) &thread_params[i]);
+    }
+
+    // Wait for all threads to complete
+    for (int i = 0; i < thread_count; i++) {
+        pthread_join(thread_handles[i], NULL);
+    }
+
     // Stop timer
     clock_t end = clock();
     double elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    
+
     // Print the result
     printf("%s Linked List Time: %.2f seconds\n", list_name, elapsed);
+
+    // Free memory
+    free(thread_handles);
+    free(thread_params);
 }
+
 
 int main() {
     srand(time(NULL));  // Set random seed
