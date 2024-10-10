@@ -1,10 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef struct list_node_s {
-    int data;
-    struct list_node_s* next;
-} list_node_t;
+#include "linked_list_node.h"
 
 int Member(int value, list_node_t* head_p) {
     list_node_t* curr_p = head_p;

@@ -1,11 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef struct list_node_s {
-    int data;
-    struct list_node_s* next;
-} list_node_t;
+#include "linked_list_node.h"
 
 pthread_rwlock_t rwlock;
 
