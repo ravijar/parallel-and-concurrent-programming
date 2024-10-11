@@ -69,8 +69,10 @@ void get_user_inputs() {
     printf("Enter the fraction of Delete operations (mDelete): ");
     scanf("%lf", &mDelete);
     
-    printf("Enter the number of threads: ");
-    scanf("%d", &thread_count);
+    #if defined(USE_MUTEX) || defined(USE_RWLOCK)
+        printf("Enter the number of threads: ");
+        scanf("%d", &thread_count);
+    #endif
 
     printf("Enter the number of samples: ");
     scanf("%d", &samples);
@@ -139,8 +141,26 @@ void* thread_work(void* arg) {
     pthread_exit(NULL);
 }
 
-// General testing function
 void test_linked_list(const char* list_name, list_node_t** head_pp, MemberFn member_fn, InsertFn insert_fn, DeleteFn delete_fn) {
+    // Populate the list
+    populate_list(head_pp, n, insert_fn);
+
+    // Start timer
+    clock_t start = clock();
+
+    // Perform random operations
+    perform_random_operations(head_pp, m, mMember, mInsert, mDelete, member_fn, insert_fn, delete_fn);
+
+    // Stop timer
+    clock_t end = clock();
+    double elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    execution_times[sample_index] = elapsed;
+    sample_index ++;
+}
+
+// General testing function for multi threaded linked lists
+void test_mt_linked_list(const char* list_name, list_node_t** head_pp, MemberFn member_fn, InsertFn insert_fn, DeleteFn delete_fn) {
     // Populate the list
     populate_list(head_pp, n, insert_fn);
 
@@ -200,9 +220,9 @@ int main() {
         #ifdef USE_SERIAL
             test_linked_list("Serial", &head, Member, Insert, Delete);
         #elif defined(USE_MUTEX)
-            test_linked_list("Mutex", &head, Member, Insert, Delete);
+            test_mt_linked_list("Mutex", &head, Member, Insert, Delete);
         #elif defined(USE_RWLOCK)
-            test_linked_list("Read-Write Lock", &head, Member, Insert, Delete);
+            test_mt_linked_list("Read-Write Lock", &head, Member, Insert, Delete);
         #else
             printf("No linked list type defined! Use -DUSE_SERIAL, -DUSE_MUTEX, or -DUSE_RWLOCK.\n");
             return -1;
