@@ -13,8 +13,9 @@
 #endif
 
 // Global input parameters
-int n, m, thread_count;
+int n, m, thread_count, samples, sample_index = 0;
 double mMember, mInsert, mDelete;
+double* execution_times;
 
 // Function pointers for operations
 typedef int (*MemberFn)(int, list_node_t*);
@@ -51,6 +52,9 @@ void get_user_inputs() {
     
     printf("Enter the number of threads: ");
     scanf("%d", &thread_count);
+
+    printf("Enter the number of samples: ");
+    scanf("%d", &samples);
 }
 
 // Function to generate a random unique number between 0 and MAX_VALUE (65535)
@@ -120,7 +124,6 @@ void* thread_work(void* arg) {
 void test_linked_list(const char* list_name, list_node_t** head_pp, MemberFn member_fn, InsertFn insert_fn, DeleteFn delete_fn) {
     // Populate the list
     populate_list(head_pp, n, insert_fn);
-    printf("List Populated!\n");
 
     // Divide the operations among the threads
     int operations_per_thread = m / thread_count;
@@ -155,8 +158,8 @@ void test_linked_list(const char* list_name, list_node_t** head_pp, MemberFn mem
     clock_t end = clock();
     double elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
 
-    // Print the result
-    printf("%s Linked List Time: %.2f seconds\n", list_name, elapsed);
+    execution_times[sample_index] = elapsed;
+    sample_index ++;
 
     // Free memory
     free(thread_handles);
@@ -170,18 +173,30 @@ int main() {
     // Get inputs from the user
     get_user_inputs();
 
-    list_node_t* head = NULL;
+    double total_elapsed = 0;
 
-    #ifdef USE_SERIAL
-        test_linked_list("Serial", &head, Member,Insert, Delete);
-    #elif defined(USE_MUTEX)
-        test_linked_list("Mutex", &head, Member,Insert, Delete);
-    #elif defined(USE_RWLOCK)
-        test_linked_list("Read-Write Lock", &head, Member,Insert, Delete);
-    #else
-        printf("No linked list type defined! Use -DUSE_SERIAL, -DUSE_MUTEX, or -DUSE_RWLOCK.\n");
-        return -1;
-    #endif
+    execution_times = malloc(samples * sizeof(double));
+
+    for (int i = 0; i < samples; i++) {
+        list_node_t* head = NULL;
+
+        #ifdef USE_SERIAL
+            test_linked_list("Serial", &head, Member, Insert, Delete);
+        #elif defined(USE_MUTEX)
+            test_linked_list("Mutex", &head, Member, Insert, Delete);
+        #elif defined(USE_RWLOCK)
+            test_linked_list("Read-Write Lock", &head, Member, Insert, Delete);
+        #else
+            printf("No linked list type defined! Use -DUSE_SERIAL, -DUSE_MUTEX, or -DUSE_RWLOCK.\n");
+            return -1;
+        #endif
+
+        printf("Sample %d ==> %.5f seconds\n", i+1, execution_times[i]);
+        total_elapsed += execution_times[i];
+    }
+
+    printf("================================================\n");
+    printf("Average Time ==> %.5f seconds\n", total_elapsed / samples);
 
     return 0;
 }
