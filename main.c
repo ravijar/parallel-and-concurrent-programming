@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
+#include <math.h>
 #include "linked_list_node.h"
 
 #ifdef USE_SERIAL
@@ -32,6 +33,24 @@ typedef struct {
     InsertFn insert_fn;
     DeleteFn delete_fn;
 } thread_params_t;
+
+// Calculate mean of an array
+double calculate_mean(double* times, int size) {
+    double sum = 0;
+    for (int i = 0; i < size; i++) {
+        sum += times[i];
+    }
+    return sum / size;
+}
+
+// Calculate standard deviation of an array
+double calculate_stddev(double* times, int size, double mean) {
+    double variance = 0;
+    for (int i = 0; i < size; i++) {
+        variance += (times[i] - mean) * (times[i] - mean);
+    }
+    return sqrt(variance / size);
+}
 
 // Function to get user inputs
 void get_user_inputs() {
@@ -173,8 +192,6 @@ int main() {
     // Get inputs from the user
     get_user_inputs();
 
-    double total_elapsed = 0;
-
     execution_times = malloc(samples * sizeof(double));
 
     for (int i = 0; i < samples; i++) {
@@ -191,12 +208,14 @@ int main() {
             return -1;
         #endif
 
-        printf("Sample %d ==> %.5f seconds\n", i+1, execution_times[i]);
-        total_elapsed += execution_times[i];
+        printf("Sample %d ==> %.5f s\n", i+1, execution_times[i]);
     }
 
+    double mean = calculate_mean(execution_times, samples);
+
     printf("================================================\n");
-    printf("Average Time ==> %.5f seconds\n", total_elapsed / samples);
+    printf("Average Time ==> %.5f s\n", mean);
+    printf("Standard Deviation ==> %.5f s\n", calculate_stddev(execution_times, samples, mean));
 
     return 0;
 }
